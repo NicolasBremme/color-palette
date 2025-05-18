@@ -1,0 +1,120 @@
+:root {
+    --colorpicker-w: 400px;
+    --colorpicker-h: 400px;
+    --slider-t: 25px;
+}
+
+body {
+    display: flex;
+}
+
+.flex-wrapper {
+    padding: 25px;
+}
+
+/* Colorpicker display */
+.colorpicker {
+    display: flex;
+    width: calc(var(--colorpicker-w));
+    height: calc(var(--colorpicker-h));
+}
+
+.spectrum {
+    width: var(--colorpicker-w);
+    height: var(--colorpicker-h);
+    background: linear-gradient(transparent 0%, #000000 100%), linear-gradient(to left, transparent 0%, #ffffff 100%), #00000000;
+}
+
+/* Colorpicker params */
+.hue {
+    width: var(--colorpicker-h) !important;
+    height: var(--slider-t) !important;
+    background: linear-gradient(to right, red, yellow, lime, cyan, blue, magenta, red);
+}
+
+/* Input range */
+.color-range {
+    appearance: none;
+}
+
+.vertical {
+    writing-mode: vertical-lr;
+    direction: rtl;
+}
+
+.horizontal {}
+
+/* Slider thumb */
+.color-range::-webkit-slider-thumb {
+    appearance: none;
+    background: #bbbbbb;
+    border: solid 2px #000000;
+}
+
+.vertical::-webkit-slider-thumb {
+    width: var(--slider-t);
+    height: 5px;
+}
+
+.horizontal::-webkit-slider-thumb {
+    width: 8px;
+    height: var(--slider-t);
+}
+
+/* Cursor for palette function */
+.cursor {
+    cursor: grab;
+}
+
+.controlCursor {
+    width: 16px;
+    height: 16px;
+    border: solid 2px #ffffff;
+    border-radius: 8px;
+    position: absolute;
+}
+
+.pointCursor {
+    width: 17px;
+    height: 17px;
+    border: solid 2px #ffffff;
+    border-radius: 8px;
+    position: absolute;
+}
+
+/* Bezier parameters */
+.options {
+    display: flex;
+    flex-direction: column;
+}
+
+.option-label {}
+
+.options > .flex-wrapper > .coordinate:nth-of-type(n+2) {
+    margin-left: 20px;
+}
+
+/* Color palette */
+.palette-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.palette {
+    display: flex;
+    margin: 10px;
+}
+
+.palette p {
+    margin: 0;
+    width: auto;
+    height: 25px;
+    text-align: center;
+    line-height: 25px;
+    margin-left: 20px;
+}
+
+.palette-color {
+    width: 100px;
+    height: 50px;
+}
