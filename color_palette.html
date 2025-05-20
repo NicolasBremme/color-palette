@@ -29,23 +29,23 @@
         <div class="options">
             <div class="flex-wrapper">
                 <p class="option-label">Point 1:</p>
-                <input class="coordinate" type="number" data-target="point1" data-value="0" min="0" max="1" step=".001" />
-                <input class="coordinate" type="number" data-target="point1" data-value="1" min="0" max="1" step=".001" />
+                <input class="coordinate point" type="number" data-target="point1" data-value="0" />
+                <input class="coordinate point" type="number" data-target="point1" data-value="1" />
             </div>
             <div class="flex-wrapper">
                 <p class="option-label">Point 2:</p>
-                <input class="coordinate" type="number" data-target="point2" data-value="0" min="0" max="1" step=".001" />
-                <input class="coordinate" type="number" data-target="point2" data-value="1" min="0" max="1" step=".001" />
+                <input class="coordinate point" type="number" data-target="point2" data-value="0" />
+                <input class="coordinate point" type="number" data-target="point2" data-value="1" />
             </div>
             <div class="flex-wrapper">
                 <p class="option-label">Control 1:</p>
-                <input class="coordinate" type="number" data-target="control1" data-value="0" min="0" max="1" step=".001" />
-                <input class="coordinate" type="number" data-target="control1" data-value="1" min="0" max="1" step=".001" />
+                <input class="coordinate control" type="number" data-target="control1" data-value="0" />
+                <input class="coordinate control" type="number" data-target="control1" data-value="1" />
             </div>
             <div class="flex-wrapper">
                 <p class="option-label">Control 2:</p>
-                <input class="coordinate" type="number" data-target="control2" data-value="0" min="0" max="1" step=".001" />
-                <input class="coordinate" type="number" data-target="control2" data-value="1" min="0" max="1" step=".001" />
+                <input class="coordinate control" type="number" data-target="control2" data-value="0" />
+                <input class="coordinate control" type="number" data-target="control2" data-value="1" />
             </div>
             <div class="flex-wrapper">
                 <p class="option-label">Sample size: </p>
@@ -61,6 +61,12 @@
                 <p class="color-hex"></p>
             </div>
         </div>
+    </div>
+    <div class="flex-wrapper">
+        <div class="velocity-wrapper">
+            <canvas class="velocity"></canvas>
+        </div>
+        <p style="text-align: center;">Velocity / t</p>
     </div>
 </body>
 

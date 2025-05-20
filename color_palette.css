@@ -1,6 +1,8 @@
 :root {
-    --colorpicker-w: 400px;
-    --colorpicker-h: 400px;
+    --colorpicker-w: 800px;
+    --colorpicker-h: 800px;
+    --control-space-w: 400px;
+    --control-space-h: 400px;
     --slider-t: 25px;
 }
 
@@ -9,7 +11,14 @@ body {
 }
 
 .flex-wrapper {
-    padding: 25px;
+    padding: 10px;
+}
+
+/* Velocity display */
+.velocity {
+    width: calc(var(--colorpicker-w) - var(--control-space-w));
+    height: calc(var(--colorpicker-h) - var(--control-space-h));
+    background-color: #8d8d8d;
 }
 
 /* Colorpicker display */
@@ -22,7 +31,7 @@ body {
 .spectrum {
     width: var(--colorpicker-w);
     height: var(--colorpicker-h);
-    background: linear-gradient(transparent 0%, #000000 100%), linear-gradient(to left, transparent 0%, #ffffff 100%), #00000000;
+    background-color: #8d8d8d;
 }
 
 /* Colorpicker params */
@@ -47,8 +56,7 @@ body {
 /* Slider thumb */
 .color-range::-webkit-slider-thumb {
     appearance: none;
-    background: #bbbbbb;
-    border: solid 2px #000000;
+    background: #808080;
 }
 
 .vertical::-webkit-slider-thumb {
@@ -103,6 +111,7 @@ body {
 .palette {
     display: flex;
     margin: 10px;
+    width: 250px;
 }
 
 .palette p {

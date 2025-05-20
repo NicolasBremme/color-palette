@@ -31,17 +31,32 @@ const cubeBezier = (t, start, end, control1, control2) => {
 const applyControlScale = (control) => {
     let scale = (n) => { return 2.5 * (n - .5) + .5; }
 
-    return control;
     return [scale(control[0]), scale(control[1])];
 }
 const precisionDigits = (precision) => { return Math.floor(Math.log10(precision)); }
 
-var colorpickerDisplay = document.querySelector(".colorpicker canvas");
-var displayRect = colorpickerDisplay.getBoundingClientRect();
-var displaySize = {
+/* Velocity graph */
+var velocityDisplay = document.querySelector("canvas.velocity");
+var velocityRect = velocityDisplay.getBoundingClientRect();
+var velocitySize = {
+    width: velocityDisplay.offsetWidth,
+    height: velocityDisplay.offsetHeight
+}
+
+/* Colorpicker size */
+var colorpickerDisplay = document.querySelector("canvas.spectrum");
+var colorPickerRect = colorpickerDisplay.getBoundingClientRect();
+var colorPickerSize = {
     width: colorpickerDisplay.offsetWidth,
     height: colorpickerDisplay.offsetHeight
-}
+};
+var controlSpace = {
+    x: 400,
+    y: 400
+};
+
+/* Color parameters */
+var hueInput = document.querySelector(".hue");
 
 /* Cursors */
 var controlCursor1 = document.querySelector(".controlCursor[data-position='control1']");
@@ -94,15 +109,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     window.addEventListener("mousemove", moveCursorUser);
 
-    document.querySelector(".hue").addEventListener("input", (event) => {
-        let element = event.currentTarget;
-        let value = element.value;
-        let spectrum = document.querySelector(".spectrum");
-
-        spectrum.style.backgroundColor = "hsl(" + value + ", 100%, 50%)";
-
-        drawPaletteFunction();
-    });
+    document.querySelector(".hue").addEventListener("input", drawPaletteFunction);
 
     document.querySelectorAll(".coordinate").forEach((element) => {
         element.addEventListener("input", onInputCoordinateNumber);
@@ -128,32 +135,18 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 
 function setup() {
-    let spectrum = document.querySelector(".spectrum");
-    let hue = document.querySelector(".hue");
+    hueInput.value = 0;
 
-    spectrum.style.backgroundColor = "red";
-    hue.value = 0;
+    colorpickerDisplay.setAttribute("width", colorPickerSize.width);
+    colorpickerDisplay.setAttribute("height", colorPickerSize.height);
 
-    colorpickerDisplay.setAttribute("width", displaySize.width);
-    colorpickerDisplay.setAttribute("height", displaySize.height);
+    velocityDisplay.setAttribute("width", colorPickerSize.width - controlSpace.x);
+    velocityDisplay.setAttribute("height", colorPickerSize.height - controlSpace.y);
 
     point1 = [0, .95];
     point2 = [.95, 0];
     control1 = [1, .65];
     control2 = [.65, 1];
-
-    let xRatio = displaySize.width;
-    let yRatio = displaySize.height;
-
-    let startPoint1 = [point1[0] * xRatio, (displaySize.height - point1[1] * yRatio)];
-    let startPoint2 = [point2[0] * xRatio, (displaySize.height - point2[1] * yRatio)];
-    let startControl1 = [control1[0] * xRatio, (displaySize.height - control1[1] * yRatio)];
-    let startControl2 = [control2[0] * xRatio, (displaySize.height - control2[1] * yRatio)];
-
-    point1 = getElementPositionNormalized(startPoint1);
-    point2 = getElementPositionNormalized(startPoint2);
-    control1 = getElementPositionNormalized(startControl1);
-    control2 = getElementPositionNormalized(startControl2);
 
     controlCoord1X.value = control1[0];
     controlCoord1Y.value = control1[1];
@@ -165,9 +158,24 @@ function setup() {
     pointCoord2Y.value = point2[1];
 
     document.querySelectorAll(".coordinate").forEach((element) => {
-        element.setAttribute("min", 0);
-        element.setAttribute("max", 1);
+        let min = 0;
+        let max = 1;
+
+        if (element.classList.value.indexOf("control") !== -1) {
+            let ratio = (element.dataset.value == 0) ? controlSpace.x / (colorPickerSize.width - controlSpace.x) / 2 : controlSpace.y / (colorPickerSize.height - controlSpace.y) / 2;
+
+            min = Math.min(0, -ratio);
+            max = Math.max(1, 1 + ratio);
+        }
+
+        element.setAttribute("min", min);
+        element.setAttribute("max", max);
     });
+
+    let startPoint1 = normalizedToGraph(point1);
+    let startPoint2 =  normalizedToGraph(point2);
+    let startControl1 =  normalizedToGraph(control1);
+    let startControl2 =  normalizedToGraph(control2);
 
     setCursorPosition(controlCursor1, startControl1);
     setCursorPosition(controlCursor2, startControl2);
@@ -185,22 +193,11 @@ function setup() {
 }
 
 function createSampleArray(sampleSize) {
-    let sampleStep = Math.round(precision / sampleSize);
-    let middleOffset = 0;
+    let sampleStep = Math.round(precision / (parseInt(sampleSize, 10) + 1));
 
     sampleArray = [];
-    if (sampleSize % 2 == 0) {
-        middleOffset = Math.floor(sampleStep / 2);
-    }
-
-    for (let i = 0; i < precision / 2; i += sampleStep) {
-        let aboveIndex = Math.floor(precision / 2 + i) + middleOffset;
-        let belowIndex = Math.floor(precision / 2 - i) - middleOffset;
-
-        sampleArray.push({"index": aboveIndex});
-        if (belowIndex != aboveIndex) {
-            sampleArray.push({"index": belowIndex});
-        }
+    for (let i = sampleStep; i <= precision - sampleSize; i += sampleStep) {
+        sampleArray.push({"index": i});
     }
 
     sampleArray.sort((a, b) => {
@@ -211,17 +208,18 @@ function createSampleArray(sampleSize) {
 function drawPaletteFunction() {
     let context = colorpickerDisplay.getContext("2d");
 
-    context.clearRect(0, 0, displaySize.width, displaySize.height);
+    let [velocityPoint1, velocityPoint2, velocityControl] = calcVelocityCurveParameters();
+
+    // let startIntegral = cubeBezier(0, point1, point2, control1, control2);
+    // let endIntegral = cubeBezier(1, point1, point2, control1, control2);
+    // let integral = Math.sqrt(Math.pow(startIntegral[0], 2) + Math.pow(startIntegral[1], 2), 2) + Math.sqrt(Math.pow(endIntegral[0], 2) + Math.pow(endIntegral[1], 2), 2);
+
+    context.clearRect(0, 0, colorPickerSize.width, colorPickerSize.height);
+    createColorGradient();
     context.strokeStyle = "#ffffff";
     context.lineWidth = 3;
     context.setLineDash([]);
     context.beginPath();
-
-    let xRatio = displaySize.width;
-    let yRatio = displaySize.height;
-
-    let scaledControl1 = applyControlScale(control1);
-    let scaledControl2 = applyControlScale(control2);
 
     let sampleIndexes = sampleArray.map((sampleInfos, index) => {
         return sampleInfos.index;
@@ -229,10 +227,13 @@ function drawPaletteFunction() {
 
     for (let i = 0; i <= precision; i++) {
         let iNormalized = i  / precision;
-        let [x, y] = cubeBezier(iNormalized, point1, point2, scaledControl1, scaledControl2);
+        let [x, y] = cubeBezier(iNormalized, point1, point2, control1, control2);
+        // let [x, y] = cubeBezier(iNormalized, point1, point2, applyControlScale(control1), applyControlScale(control2));
 
-        let xGraph = x * xRatio;
-        let yGraph = displaySize.height - y * yRatio;
+        x = Math.max(Math.min(x, 1), 0);
+        y = Math.max(Math.min(y, 1), 0);
+
+        let [xGraph, yGraph] = normalizedToGraph([x, y]);
 
         if (i == 0) {
             context.moveTo(xGraph, yGraph);
@@ -260,6 +261,64 @@ function drawPaletteFunction() {
 
     drawControlToMain();
     createColorPalette();
+    drawVelocityCurve(velocityPoint1, velocityPoint2, velocityControl);
+}
+
+function calcVelocityCurveParameters() {
+    let p1 = [3 * Math.abs(control1[0] - point1[0]), 3 * Math.abs(control1[1] - point1[1])];
+    let p2 = [3 * Math.abs(point2[0] - control2[0]), 3 * Math.abs(point2[1] - control2[1])];
+    let c = [3 * Math.abs(control2[0] - control1[0]), 3 * Math.abs(control2[1] - control1[1])];
+
+    return [p1, p2, c];
+}
+
+function drawVelocityCurve(velocityPoint1, velocityPoint2, velocityControl) {
+    let context = velocityDisplay.getContext("2d");
+
+    // Maximum velocity possible given the constraint of the controls and points coordinates
+    // Given by evaluating the derivative of the cubic bezier curve of parameters P1 = [0; 0], P2 = [1; 1], C1 = [1.5; 1.5], C2 = [-0.5; -0.5] at t = 1 / 2
+    let upperBound = Math.sqrt(55,125);
+
+    context.clearRect(0, 0, colorPickerSize.width - controlSpace.x, colorPickerSize.height - controlSpace.y);
+    context.strokeStyle = "#ffffff";
+    context.lineWidth = 3;
+    context.setLineDash([]);
+    context.beginPath();
+
+    for (let i = 0; i <= precision; i++) {
+        let iNormalized = i  / precision;
+        let [x, y] = quadBezier(iNormalized, velocityPoint1, velocityPoint2, velocityControl);
+
+        let xRatio = velocitySize.width;
+        let yRatio = velocitySize.height / upperBound;
+
+        let velocity = Math.sqrt(Math.pow(x, 2) + Math.pow(y, 2), 2);
+
+        let xGraph = iNormalized * xRatio;
+        let yGraph = (upperBound - velocity) * yRatio;
+
+        if (i == 0) {
+            context.moveTo(xGraph, yGraph);
+        }
+        context.lineTo(xGraph, yGraph);
+    }
+    context.stroke();
+}
+
+function createColorGradient() {
+    let context = colorpickerDisplay.getContext("2d");
+    let horizontalGradient = context.createLinearGradient(controlSpace.x / 2, 0, colorPickerSize.width - controlSpace.x / 2, 0);
+    let verticalGradient = context.createLinearGradient(0, controlSpace.y / 2, 0, colorPickerSize.height - controlSpace.y / 2);
+
+    horizontalGradient.addColorStop(0, "#ffffff");
+    horizontalGradient.addColorStop(1, "hsl(" + hueInput.value + ", 100%, 50%)");
+    context.fillStyle = horizontalGradient;
+    context.fillRect(controlSpace.x / 2, controlSpace.y / 2, colorPickerSize.width - controlSpace.x, colorPickerSize.height - controlSpace.y);
+
+    verticalGradient.addColorStop(0, "#00000000");
+    verticalGradient.addColorStop(1, "#000000");
+    context.fillStyle = verticalGradient;
+    context.fillRect(controlSpace.x / 2, controlSpace.y / 2, colorPickerSize.width - controlSpace.x, colorPickerSize.height - controlSpace.y);
 }
 
 function createColorPalette() {
@@ -283,12 +342,9 @@ function createColorPalette() {
         newPalette.setAttribute("data-index", i);
         parentNode.append(newPalette);
 
-        newPalette = document.querySelector(".palette[data-index='" + i + "']");
-        console.log(i, newPalette)
-
         newPalette.querySelector("div.palette-color").style.backgroundColor = sampleArray[i].hex;
-        newPalette.querySelector("p.color-rgb").innerText = "rgb(" + sampleArray[0].rgb[0] + ", " + sampleArray[0].rgb[1] + ", " + sampleArray[0].rgb[2] + ")";
-        newPalette.querySelector("p.color-hex").innerText = sampleArray[0].hex;
+        newPalette.querySelector("p.color-rgb").innerText = "rgb(" + sampleArray[i].rgb[0] + ", " + sampleArray[i].rgb[1] + ", " + sampleArray[i].rgb[2] + ")";
+        newPalette.querySelector("p.color-hex").innerText = sampleArray[i].hex;
     }
 }
 
@@ -299,29 +355,31 @@ function drawControlToMain() {
     context.lineWidth = 1;
     context.setLineDash([]);
     context.beginPath();
-
-    let xRatio = displaySize.width;
-    let yRatio = displaySize.height;
-
-    context.moveTo(point1[0] * xRatio, displaySize.height - point1[1] * yRatio);
-    context.lineTo(control1[0] * xRatio, displaySize.height - control1[1] * yRatio);
-
-    context.moveTo(control1[0] * xRatio, displaySize.height - control1[1] * yRatio);
-    context.lineTo(control2[0] * xRatio, displaySize.height - control2[1] * yRatio);
     
-    context.moveTo(point2[0] * xRatio, displaySize.height - point2[1] * yRatio);
-    context.lineTo(control2[0] * xRatio, displaySize.height - control2[1] * yRatio);
+    let point1Graph = normalizedToGraph(point1);
+    let point2Graph = normalizedToGraph(point2);
+    let control1Graph = normalizedToGraph(control1);
+    let control2Graph = normalizedToGraph(control2);
+
+    context.moveTo(point1Graph[0], point1Graph[1]);
+    context.lineTo(control1Graph[0], control1Graph[1]);
+
+    // context.moveTo(control1Graph[0], control1Graph[1]);
+    // context.lineTo(control2Graph[0], control2Graph[1]);
+
+    context.moveTo(point2Graph[0], point2Graph[1]);
+    context.lineTo(control2Graph[0], control2Graph[1]);
 
     context.stroke();
 }
 
 function getElementPositionNormalized(position, isNormalized = false) {
-    let x = position[0];
-    let y = position[1];
+    let x = position[0] - controlSpace.x / 2;
+    let y = position[1] - controlSpace.y / 2;
 
     if (isNormalized == false) {
-        let xRatio = displaySize.width;
-        let yRatio = displaySize.height;
+        let xRatio = colorPickerSize.width - controlSpace.x;
+        let yRatio = colorPickerSize.height - controlSpace.y;
 
         x = x / xRatio;
         y = y / yRatio;
@@ -329,9 +387,18 @@ function getElementPositionNormalized(position, isNormalized = false) {
     return [(x).toFixed(precisionDigits(precision)), (1 - y).toFixed(precisionDigits(precision))];
 }
 
+function normalizedToGraph(position) {
+    let xRatio = colorPickerSize.width - controlSpace.x;
+    let yRatio = colorPickerSize.height - controlSpace.y;
+    let x = position[0] * xRatio + controlSpace.x / 2;
+    let y = (1 - position[1]) * yRatio + controlSpace.x / 2;
+
+    return [Math.floor(x), Math.floor(y)];
+}
+
 function setCursorPosition(element, position) {
-    let x = position[0] + displayRect.left + window.scrollX - xOffset;
-    let y = position[1] + displayRect.top + window.scrollY - yOffset;
+    let x = position[0] + colorPickerRect.left + window.scrollX - xOffset;
+    let y = position[1] + colorPickerRect.top + window.scrollY - yOffset;
 
     element.style.left = x.toString() + "px";
     element.style.top = y.toString() + "px";
@@ -343,10 +410,10 @@ function moveCursorUser(event)  {
     }
 
     let cursorToMove = activeCursor;
-    let position = [event.clientX - displayRect.left, event.clientY - displayRect.top];
+    let position = [event.clientX - colorPickerRect.left, event.clientY - colorPickerRect.top];
 
-    let xPrecisionByPixel = Math.floor(displaySize.width / precision);
-    let yPrecisionByPixel = Math.floor(displaySize.height / precision);
+    let xPrecisionByPixel = Math.floor((colorPickerSize.width - controlSpace.x) / precision);
+    let yPrecisionByPixel = Math.floor((colorPickerSize.height - controlSpace.y) / precision);
     let xPrecisionOffset = 0;
     let yPrecisionOffset = 0;
 
@@ -357,8 +424,14 @@ function moveCursorUser(event)  {
         yPrecisionOffset= Math.max(position[1] % yPrecisionByPixel, 0);
     }
 
-    position[0] = Math.max(Math.min(position[0] - xPrecisionOffset, displaySize.width), 0);
-    position[1] = Math.max(Math.min(position[1] - yPrecisionOffset, displaySize.height), 0);
+    if (activeCursor.classList.value.indexOf("control") !== -1) {
+        position[0] = Math.max(Math.min(position[0] - xPrecisionOffset, colorPickerSize.width), 0);
+        position[1] = Math.max(Math.min(position[1] - yPrecisionOffset, colorPickerSize.height), 0);
+    }
+    if (activeCursor.classList.value.indexOf("point") !== -1) {
+        position[0] = Math.max(Math.min(position[0] - xPrecisionOffset, colorPickerSize.width - controlSpace.x / 2), controlSpace.x / 2);
+        position[1] = Math.max(Math.min(position[1] - yPrecisionOffset, colorPickerSize.height - controlSpace.y / 2), controlSpace.y / 2);
+    }
 
     window[cursorToMove.dataset.position] = getElementPositionNormalized(position);
     setCursorPosition(cursorToMove, position);
@@ -388,12 +461,9 @@ function onInputCoordinateNumber(event) {
         element.value = min;
     }
 
-    let xRatio = displaySize.width;
-    let yRatio = displaySize.height;
-    
     window[targetSelector][targetValue] = element.value;
 
-    let position = [window[targetSelector][0] * xRatio, displaySize.height - window[targetSelector][1] * yRatio];
+    let position = normalizedToGraph(window[targetSelector]);
 
     setCursorPosition(target, position);
 
